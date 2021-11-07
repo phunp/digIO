@@ -1,5 +1,3 @@
-package main;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -20,6 +18,14 @@ public class LogAggregator {
         urlCounter = new ConcurrentHashMap<>();
     }
 
+    public Map<String, AtomicInteger> getUrlCounter() {
+        return urlCounter;
+    }
+
+    public Map<String, AtomicInteger> getIpCounter() {
+        return ipCounter;
+    }
+
     public Integer uniqueIpAddresses() {
         return ipCounter.size();
     }
@@ -31,9 +37,9 @@ public class LogAggregator {
     }
 
     public String topMostVisitedUrls(int top) {
-        List<String> topIps = urlCounter.entrySet().stream().sorted(Collections.reverseOrder(Comparator.comparingInt(e -> e.getValue().get())))
+        List<String> topUrls = urlCounter.entrySet().stream().sorted(Collections.reverseOrder(Comparator.comparingInt(e -> e.getValue().get())))
                 .limit(top).map(e -> e.getKey()).collect(Collectors.toList());
-        return Arrays.toString(topIps.toArray());
+        return Arrays.toString(topUrls.toArray());
     }
 
     public void consumeLog(LogEntry entry) {
@@ -55,29 +61,34 @@ public class LogAggregator {
     public LogEntry parseLog(String log) {
         if (log == null) return null;
 
-        // parse ip address
-        String ipAddress = null;
-        if (!log.startsWith("-")) {
-            ipAddress = log.substring(0, log.indexOf(" "));
-        }
-
-        // parse url
-        String url = null;
-        String[] parts = log.split("\"");
-        if (parts.length > 1) {
-            // second part is the request detail
-            String urlPart = parts[1];
-            String[] requestPart = urlPart.split(" ");
-            if (requestPart.length == 3) {
-                url = requestPart[1];
+        try {
+            // parse ip address
+            String ipAddress = null;
+            if (!log.startsWith("-")) {
+                ipAddress = log.substring(0, log.indexOf(" "));
             }
-        }
 
-        return (ipAddress != null || url != null) ?
-                new LogEntry.LogEntryBuilder()
-                    .ipAddress(ipAddress)
-                    .requestedUrl(url)
-                    .build()
-                : null;
+            // parse url
+            String url = null;
+            String[] parts = log.split("\"");
+            if (parts.length > 1) {
+                // second part is the request detail
+                String urlPart = parts[1];
+                String[] requestPart = urlPart.split(" ");
+                if (requestPart.length == 3) {
+                    url = requestPart[1];
+                }
+            }
+
+            return (ipAddress != null || url != null) ?
+                    new LogEntry.LogEntryBuilder()
+                            .ipAddress(ipAddress)
+                            .requestedUrl(url)
+                            .build()
+                    : null;
+        } catch (Exception ex) {
+            // invalid log, return null
+            return null;
+        }
     }
 }
